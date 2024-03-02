@@ -1,0 +1,95 @@
+import json
+import pandas as pd
+import requests
+from requests import Request, Session
+
+API_KEY = 'your_API_key_here'
+
+def abbreviate_number(number):
+""" Create a function that abbreviates a number. There are many large numbers in these dataframes that need handling before presenting them. """
+
+    abbreviations = [(1e12, 'T'), (1e9, 'B'), (1e6, 'M'),]
+    for abbr_number, abbr in abbreviations:
+        if number >= abbr_number:
+            abbreviated = f'{round(number/abbr_number, 2)} {abbr}'
+            if abbreviated.endswith('.0'):
+                abbreviated = abbreviated[:-2]  # Remove decimal point and trailing zero if unnecessary
+            return abbreviated
+        else:
+            formatted_number = "{:,}".format(number)
+    return formatted_number
+
+
+# Pull Bitcoin Data from CoinMarketCap API. Return in JSON format.
+def btc_price_data():
+
+    url = 'https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest'
+    parameters = {
+        "symbol": "BTC",
+        "convert": "USD"
+    }
+    headers = {
+        "Accepts": "application/json",
+        "X-CMC_PRO_API_KEY": API_KEY
+    }
+    session = Session()
+    session.headers.update(headers)
+    response = session.get(url, params=parameters)
+    btc_market_cap = round(json.loads(response.text)["data"]["BTC"][0]["quote"]["USD"]["market_cap"], 2)
+    btc_dominance = round(json.loads(response.text)["data"]["BTC"][0]["quote"]["USD"]["market_cap_dominance"], 2)
+    btc_price = round(json.loads(response.text)["data"]["BTC"][0]["quote"]["USD"]["price"], 2)
+    adj_price = "{:,}".format(btc_price)
+    btc_7d_change = round(json.loads(response.text)["data"]["BTC"][0]["quote"]["USD"]["percent_change_7d"], 2)
+    btc_volume_24h = round(json.loads(response.text)["data"]["BTC"][0]["quote"]["USD"]["volume_24h"], 2)
+
+    btc_data_dict = [
+        {"btc_price": adj_price},
+        {"btc_percent_change_7d": btc_7d_change},
+        {"btc_volume_24h": abbreviate_number(round(btc_volume_24h))},
+        {"btc_market_cap": abbreviate_number(round(btc_market_cap))},
+        {"btc_market_cap_dominance": btc_dominance}
+    ]
+
+    with open("btc_data_dict.json", "w") as f:
+        json.dump(btc_data_dict, f)
+
+    return
+
+
+# Pull global metrics such as total market capitalization, DeFi market cap, etc. Return in JSON format.
+def global_metrics():
+
+    url = 'https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest'
+    parameters = {
+        "convert": "USD"
+    }
+    headers = {
+        "Accepts": "application/json",
+        "X-CMC_PRO_API_KEY": API_KEY
+    }
+    session = Session()
+    session.headers.update(headers)
+    response = session.get(url, params=parameters)
+    total_market_cap = json.loads(response.text)["data"]["quote"]["USD"]['total_market_cap']
+    total_volume_24h = json.loads(response.text)["data"]["quote"]["USD"]['total_volume_24h']
+    altcoin_market_cap = json.loads(response.text)["data"]["quote"]["USD"]['altcoin_market_cap']
+    altcoin_volume_24h = json.loads(response.text)["data"]["quote"]["USD"]['altcoin_volume_24h']
+    stablecoin_market_cap = json.loads(response.text)["data"]["quote"]["USD"]['stablecoin_market_cap']
+    stablecoin_volume_24h = json.loads(response.text)["data"]["quote"]["USD"]['stablecoin_volume_24h']
+    defi_market_cap = json.loads(response.text)["data"]["quote"]["USD"]['defi_market_cap']
+    defi_volume_24h = json.loads(response.text)["data"]["quote"]["USD"]['defi_volume_24h']
+    global_data_dict = [
+        {"total_market_cap": abbreviate_number(round(total_market_cap))},
+        {"total_volume_24h": abbreviate_number(round(total_volume_24h))},
+         {"altcoin_market_cap": abbreviate_number(round(altcoin_market_cap))},
+          {"altcoin_volume_24h": abbreviate_number(round(altcoin_volume_24h))},
+           {"stablecoin_market_cap": abbreviate_number(round(stablecoin_market_cap))},
+            {"stablecoin_volume_24h": abbreviate_number(round(stablecoin_volume_24h))},
+             {"defi_market_cap": abbreviate_number(round(defi_market_cap))},
+              {"defi_volume_24h": abbreviate_number(round(defi_volume_24h))}
+    ]
+
+    with open("global_data_dict.json", "w") as f:
+        json.dump(global_data_dict, f)
+
+    return
